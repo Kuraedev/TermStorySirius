@@ -118,7 +118,12 @@ class _GameScreenState extends State<GameScreen>
   Widget build(BuildContext context) {
     final beat = _current;
     final size = MediaQuery.of(context).size;
-    final imageHeight = (size.height * 0.30).clamp(150.0, 245.0).toDouble();
+    final imageHeight = (size.height * 0.29).clamp(140.0, 235.0).toDouble();
+    final storyFontSize = size.width < 390 ? 19.0 : 20.5;
+    final visibleChoices =
+        beat.hasChoices ? widget.state.availableChoices(beat.choices!) : const <StoryChoice>[];
+    final hasChoices = visibleChoices.isNotEmpty;
+    final canContinue = beat.nextId != null && !beat.isEnding && !hasChoices;
 
     return Scaffold(
       body: Stack(
@@ -132,97 +137,51 @@ class _GameScreenState extends State<GameScreen>
           SafeArea(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 430),
+                constraints: const BoxConstraints(maxWidth: 470),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final actionWidth = constraints.maxWidth >= 400 ? 132.0 : 114.0;
-                      return FadeTransition(
-                        opacity: _fadeAnim,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    if (beat.imagePath != null)
-                                      SizedBox(
-                                        height: imageHeight,
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
-                                          child: Image.asset(
-                                            beat.imagePath!,
-                                            fit: BoxFit.contain,
-                                            errorBuilder: (_, __, ___) =>
-                                                Container(color: Colors.black12),
-                                          ),
-                                        ),
-                                      ),
-                                    if (beat.sceneLabel.isNotEmpty) ...[
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        beat.sceneLabel,
-                                        style: GoogleFonts.robotoMono(
-                                          fontSize: 12.5,
-                                          color: Colors.black87,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                    const SizedBox(height: 8),
-                                    Expanded(
-                                      child: SingleChildScrollView(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                                          children: [
-                                            Text(
-                                              beat.text,
-                                              style: GoogleFonts.ebGaramond(
-                                                fontSize: 20,
-                                                color: Colors.black,
-                                                height: 1.62,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            if (beat.redWarningText != null) ...[
-                                              const SizedBox(height: 14),
-                                              Text(
-                                                beat.redWarningText!,
-                                                style: GoogleFonts.ebGaramond(
-                                                  fontSize: 18,
-                                                  color: const Color(0xFF8B1A1A),
-                                                  fontWeight: FontWeight.w700,
-                                                  height: 1.55,
-                                                ),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  child: FadeTransition(
+                    opacity: _fadeAnim,
+                    child: hasChoices
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: _StoryPane(
+                                  beat: beat,
+                                  imageHeight: imageHeight,
+                                  storyFontSize: storyFontSize,
                                 ),
                               ),
-                            ),
-                            SizedBox(
-                              width: actionWidth,
-                              child: _ActionRail(
-                                beat: beat,
-                                state: widget.state,
+                              const SizedBox(height: 10),
+                              _BottomChoicesBar(
+                                choices: visibleChoices,
                                 onChoice: (choice) => _goTo(choice.nextId, choice: choice),
-                                onContinue: beat.nextId != null && !beat.isEnding
-                                    ? () => _goTo(beat.nextId!)
-                                    : null,
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                            ],
+                          )
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 12),
+                                  child: _StoryPane(
+                                    beat: beat,
+                                    imageHeight: imageHeight,
+                                    storyFontSize: storyFontSize,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 112,
+                                child: _ContinueRailButton(
+                                  enabled: canContinue,
+                                  onTap: canContinue ? () => _goTo(beat.nextId!) : null,
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
                 ),
               ),
@@ -234,33 +193,108 @@ class _GameScreenState extends State<GameScreen>
   }
 }
 
-class _ActionRail extends StatelessWidget {
+class _StoryPane extends StatelessWidget {
   final StoryBeat beat;
-  final GameState state;
-  final void Function(StoryChoice) onChoice;
-  final VoidCallback? onContinue;
+  final double imageHeight;
+  final double storyFontSize;
 
-  const _ActionRail({
+  const _StoryPane({
     required this.beat,
-    required this.state,
-    required this.onChoice,
-    required this.onContinue,
+    required this.imageHeight,
+    required this.storyFontSize,
   });
 
   @override
   Widget build(BuildContext context) {
-    final visibleChoices =
-        beat.hasChoices ? state.availableChoices(beat.choices!) : const <StoryChoice>[];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (beat.hasChoices) ...[
+        if (beat.imagePath != null)
+          SizedBox(
+            height: imageHeight,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                beat.imagePath!,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => Container(color: Colors.black12),
+              ),
+            ),
+          ),
+        if (beat.sceneLabel.isNotEmpty) ...[
+          const SizedBox(height: 8),
           Text(
-            'PATH',
+            beat.sceneLabel,
+            style: GoogleFonts.robotoMono(
+              fontSize: 13,
+              color: Colors.black87,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+        const SizedBox(height: 8),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  beat.text,
+                  style: GoogleFonts.ebGaramond(
+                    fontSize: storyFontSize,
+                    color: Colors.black,
+                    height: 1.68,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (beat.redWarningText != null) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    beat.redWarningText!,
+                    style: GoogleFonts.ebGaramond(
+                      fontSize: storyFontSize - 1.5,
+                      color: const Color(0xFF8B1A1A),
+                      fontWeight: FontWeight.w700,
+                      height: 1.6,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BottomChoicesBar extends StatelessWidget {
+  final List<StoryChoice> choices;
+  final void Function(StoryChoice) onChoice;
+
+  const _BottomChoicesBar({
+    required this.choices,
+    required this.onChoice,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 220),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.black87, width: 1),
+        color: Colors.white.withOpacity(0.24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'CHOOSE YOUR PATH',
             textAlign: TextAlign.center,
             style: GoogleFonts.robotoMono(
-              fontSize: 11.5,
+              fontSize: 12,
               color: Colors.black87,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.1,
@@ -271,14 +305,12 @@ class _ActionRail extends StatelessWidget {
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: visibleChoices
+                children: choices
                     .map(
                       (choice) => Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: _SideActionButton(
-                          label: '${choice.label}',
-                          detail: choice.text,
-                          isWarning: choice.isWarning,
+                        child: _ChoiceTile(
+                          choice: choice,
                           onTap: () => onChoice(choice),
                         ),
                       ),
@@ -287,47 +319,31 @@ class _ActionRail extends StatelessWidget {
               ),
             ),
           ),
-        ] else ...[
-          const Spacer(),
-          if (onContinue != null)
-            _SideActionButton(
-              label: 'NEXT',
-              detail: 'Continue',
-              onTap: onContinue!,
-            ),
-          const Spacer(),
         ],
-      ],
+      ),
     );
   }
 }
 
-class _SideActionButton extends StatefulWidget {
-  final String label;
-  final String detail;
-  final bool isWarning;
+class _ChoiceTile extends StatefulWidget {
+  final StoryChoice choice;
   final VoidCallback onTap;
 
-  const _SideActionButton({
-    required this.label,
-    required this.detail,
-    this.isWarning = false,
-    required this.onTap,
-  });
+  const _ChoiceTile({required this.choice, required this.onTap});
 
   @override
-  State<_SideActionButton> createState() => _SideActionButtonState();
+  State<_ChoiceTile> createState() => _ChoiceTileState();
 }
 
-class _SideActionButtonState extends State<_SideActionButton> {
+class _ChoiceTileState extends State<_ChoiceTile> {
   bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    final isWarn = widget.isWarning;
+    final isWarn = widget.choice.isWarning;
     final borderColor = isWarn ? const Color(0xFF5A0707) : Colors.black87;
-    final labelColor = isWarn ? const Color(0xFFFFC9C9) : Colors.black;
-    final detailColor = isWarn ? const Color(0xFFFFE4E4) : Colors.black87;
+    final labelColor = isWarn ? const Color(0xFFFFC9C9) : Colors.black87;
+    final textColor = isWarn ? const Color(0xFFFFE4E4) : Colors.black;
     final warnBase = const Color(0xFF3A0707);
     final warnPressed = const Color(0xFF2A0202);
 
@@ -338,40 +354,111 @@ class _SideActionButtonState extends State<_SideActionButton> {
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           border: Border.all(color: borderColor, width: 1),
           color: isWarn
               ? (_pressed ? warnPressed : warnBase)
               : (_pressed ? Colors.black.withOpacity(0.08) : Colors.transparent),
         ),
-        child: Column(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.label,
-              textAlign: TextAlign.center,
+              '${widget.choice.label}. ',
               style: GoogleFonts.robotoMono(
-                fontSize: 13.5,
+                fontSize: 13.4,
                 color: labelColor,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 5),
-            Text(
-              widget.detail,
-              textAlign: TextAlign.center,
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.robotoMono(
-                fontSize: 10.5,
-                height: 1.35,
-                color: detailColor,
-                fontWeight: FontWeight.w600,
+            Expanded(
+              child: Text(
+                widget.choice.text,
+                style: GoogleFonts.robotoMono(
+                  fontSize: 13.4,
+                  color: textColor,
+                  height: 1.45,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ContinueRailButton extends StatefulWidget {
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  const _ContinueRailButton({
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  State<_ContinueRailButton> createState() => _ContinueRailButtonState();
+}
+
+class _ContinueRailButtonState extends State<_ContinueRailButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = !widget.enabled || widget.onTap == null;
+    return Column(
+      children: [
+        const Spacer(),
+        GestureDetector(
+          onTap: disabled ? null : widget.onTap,
+          onTapDown: disabled ? null : (_) => setState(() => _pressed = true),
+          onTapUp: disabled ? null : (_) => setState(() => _pressed = false),
+          onTapCancel: () => setState(() => _pressed = false),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: disabled ? Colors.black45 : Colors.black87,
+                width: 1,
+              ),
+              color: disabled
+                  ? Colors.black.withOpacity(0.05)
+                  : (_pressed
+                      ? Colors.black.withOpacity(0.10)
+                      : Colors.transparent),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  'NEXT',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.robotoMono(
+                    fontSize: 13.8,
+                    color: disabled ? Colors.black54 : Colors.black,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Continue',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.robotoMono(
+                    fontSize: 11.2,
+                    color: disabled ? Colors.black54 : Colors.black87,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const Spacer(),
+      ],
     );
   }
 }
