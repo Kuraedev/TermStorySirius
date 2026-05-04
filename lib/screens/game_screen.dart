@@ -118,7 +118,7 @@ class _GameScreenState extends State<GameScreen>
   Widget build(BuildContext context) {
     final beat = _current;
     final size = MediaQuery.of(context).size;
-    final imageHeight = (size.height * 0.33).clamp(170.0, 290.0).toDouble();
+    final imageHeight = (size.height * 0.30).clamp(150.0, 245.0).toDouble();
 
     return Scaffold(
       body: Stack(
@@ -132,90 +132,97 @@ class _GameScreenState extends State<GameScreen>
           SafeArea(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 410),
+                constraints: const BoxConstraints(maxWidth: 430),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                  child: FadeTransition(
-                    opacity: _fadeAnim,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (beat.imagePath != null)
-                          Container(
-                            height: imageHeight,
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.black87, width: 1),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.asset(
-                                beat.imagePath!,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) =>
-                                    Container(color: Colors.black12),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final actionWidth = constraints.maxWidth >= 400 ? 132.0 : 114.0;
+                      return FadeTransition(
+                        opacity: _fadeAnim,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (beat.imagePath != null)
+                                      SizedBox(
+                                        height: imageHeight,
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.asset(
+                                            beat.imagePath!,
+                                            fit: BoxFit.contain,
+                                            errorBuilder: (_, __, ___) =>
+                                                Container(color: Colors.black12),
+                                          ),
+                                        ),
+                                      ),
+                                    if (beat.sceneLabel.isNotEmpty) ...[
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        beat.sceneLabel,
+                                        style: GoogleFonts.robotoMono(
+                                          fontSize: 12.5,
+                                          color: Colors.black87,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 8),
+                                    Expanded(
+                                      child: SingleChildScrollView(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                          children: [
+                                            Text(
+                                              beat.text,
+                                              style: GoogleFonts.ebGaramond(
+                                                fontSize: 20,
+                                                color: Colors.black,
+                                                height: 1.62,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            if (beat.redWarningText != null) ...[
+                                              const SizedBox(height: 14),
+                                              Text(
+                                                beat.redWarningText!,
+                                                style: GoogleFonts.ebGaramond(
+                                                  fontSize: 18,
+                                                  color: const Color(0xFF8B1A1A),
+                                                  fontWeight: FontWeight.w700,
+                                                  height: 1.55,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        if (beat.sceneLabel.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            beat.sceneLabel,
-                            style: GoogleFonts.robotoMono(
-                              fontSize: 11,
-                              color: Colors.black87,
-                              fontWeight: FontWeight.w600,
+                            SizedBox(
+                              width: actionWidth,
+                              child: _ActionRail(
+                                beat: beat,
+                                state: widget.state,
+                                onChoice: (choice) => _goTo(choice.nextId, choice: choice),
+                                onContinue: beat.nextId != null && !beat.isEnding
+                                    ? () => _goTo(beat.nextId!)
+                                    : null,
+                              ),
                             ),
-                          ),
-                        ],
-                        const SizedBox(height: 10),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Text(
-                                  beat.text,
-                                  style: GoogleFonts.robotoMono(
-                                    fontSize: 15,
-                                    color: Colors.black,
-                                    height: 1.55,
-                                  ),
-                                ),
-                                if (beat.redWarningText != null) ...[
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    beat.redWarningText!,
-                                    style: GoogleFonts.robotoMono(
-                                      fontSize: 13.5,
-                                      color: const Color(0xFF8B1A1A),
-                                      fontWeight: FontWeight.w600,
-                                      height: 1.5,
-                                    ),
-                                  ),
-                                ],
-                                const SizedBox(height: 18),
-                                if (beat.hasChoices)
-                                  _ChoiceButtons(
-                                    beat: beat,
-                                    state: widget.state,
-                                    onChoice: (choice) =>
-                                        _goTo(choice.nextId, choice: choice),
-                                  )
-                                else if (beat.nextId != null && !beat.isEnding)
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: _ContinueButton(
-                                      onTap: () => _goTo(beat.nextId!),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -227,58 +234,100 @@ class _GameScreenState extends State<GameScreen>
   }
 }
 
-class _ChoiceButtons extends StatelessWidget {
+class _ActionRail extends StatelessWidget {
   final StoryBeat beat;
   final GameState state;
   final void Function(StoryChoice) onChoice;
+  final VoidCallback? onContinue;
 
-  const _ChoiceButtons({
+  const _ActionRail({
     required this.beat,
     required this.state,
     required this.onChoice,
+    required this.onContinue,
   });
 
   @override
   Widget build(BuildContext context) {
-    final visible = state.availableChoices(beat.choices!);
+    final visibleChoices =
+        beat.hasChoices ? state.availableChoices(beat.choices!) : const <StoryChoice>[];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'CHOOSE YOUR PATH',
-          style: GoogleFonts.robotoMono(
-            fontSize: 12,
-            color: Colors.black87,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.1,
+        if (beat.hasChoices) ...[
+          Text(
+            'PATH',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.robotoMono(
+              fontSize: 11.5,
+              color: Colors.black87,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.1,
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
-        ...visible.map((c) => _ChoiceTile(choice: c, onTap: () => onChoice(c))),
+          const SizedBox(height: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: visibleChoices
+                    .map(
+                      (choice) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _SideActionButton(
+                          label: '${choice.label}',
+                          detail: choice.text,
+                          isWarning: choice.isWarning,
+                          onTap: () => onChoice(choice),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ),
+        ] else ...[
+          const Spacer(),
+          if (onContinue != null)
+            _SideActionButton(
+              label: 'NEXT',
+              detail: 'Continue',
+              onTap: onContinue!,
+            ),
+          const Spacer(),
+        ],
       ],
     );
   }
 }
 
-class _ChoiceTile extends StatefulWidget {
-  final StoryChoice choice;
+class _SideActionButton extends StatefulWidget {
+  final String label;
+  final String detail;
+  final bool isWarning;
   final VoidCallback onTap;
 
-  const _ChoiceTile({required this.choice, required this.onTap});
+  const _SideActionButton({
+    required this.label,
+    required this.detail,
+    this.isWarning = false,
+    required this.onTap,
+  });
 
   @override
-  State<_ChoiceTile> createState() => _ChoiceTileState();
+  State<_SideActionButton> createState() => _SideActionButtonState();
 }
 
-class _ChoiceTileState extends State<_ChoiceTile> {
+class _SideActionButtonState extends State<_SideActionButton> {
   bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    final isWarn = widget.choice.isWarning;
+    final isWarn = widget.isWarning;
     final borderColor = isWarn ? const Color(0xFF5A0707) : Colors.black87;
-    final labelColor = isWarn ? const Color(0xFFFFC9C9) : Colors.black87;
-    final textColor = isWarn ? const Color(0xFFFFE4E4) : Colors.black;
+    final labelColor = isWarn ? const Color(0xFFFFC9C9) : Colors.black;
+    final detailColor = isWarn ? const Color(0xFFFFE4E4) : Colors.black87;
     final warnBase = const Color(0xFF3A0707);
     final warnPressed = const Color(0xFF2A0202);
 
@@ -289,74 +338,38 @@ class _ChoiceTileState extends State<_ChoiceTile> {
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
           border: Border.all(color: borderColor, width: 1),
           color: isWarn
               ? (_pressed ? warnPressed : warnBase)
-              : (_pressed ? Colors.black.withOpacity(0.06) : Colors.transparent),
+              : (_pressed ? Colors.black.withOpacity(0.08) : Colors.transparent),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
           children: [
             Text(
-              '${widget.choice.label}. ',
+              widget.label,
+              textAlign: TextAlign.center,
               style: GoogleFonts.robotoMono(
-                fontSize: 13,
+                fontSize: 13.5,
                 color: labelColor,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w800,
               ),
             ),
-            Expanded(
-              child: Text(
-                widget.choice.text,
-                style: GoogleFonts.robotoMono(
-                  fontSize: 13.4,
-                  color: textColor,
-                  height: 1.45,
-                ),
+            const SizedBox(height: 5),
+            Text(
+              widget.detail,
+              textAlign: TextAlign.center,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.robotoMono(
+                fontSize: 10.5,
+                height: 1.35,
+                color: detailColor,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ContinueButton extends StatefulWidget {
-  final VoidCallback onTap;
-  const _ContinueButton({required this.onTap});
-
-  @override
-  State<_ContinueButton> createState() => _ContinueButtonState();
-}
-
-class _ContinueButtonState extends State<_ContinueButton> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.onTap,
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.black87, width: 1),
-          color: _pressed ? Colors.black.withOpacity(0.06) : Colors.transparent,
-        ),
-        child: Text(
-          'Continue',
-          style: GoogleFonts.robotoMono(
-            fontSize: 13.2,
-            color: Colors.black,
-            fontWeight: FontWeight.w700,
-          ),
         ),
       ),
     );
