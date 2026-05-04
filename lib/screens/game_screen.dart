@@ -118,14 +118,13 @@ class _GameScreenState extends State<GameScreen>
   Widget build(BuildContext context) {
     final beat = _current;
     final size = MediaQuery.of(context).size;
-    final imageHeight = (size.height * 0.29).clamp(140.0, 235.0).toDouble();
-    final storyFontSize = size.width < 390 ? 19.0 : 20.5;
-    final choicesPanelMaxHeight =
-        (size.height * 0.34).clamp(165.0, 320.0).toDouble();
-    final visibleChoices =
+    final choices =
         beat.hasChoices ? widget.state.availableChoices(beat.choices!) : const <StoryChoice>[];
-    final hasChoices = visibleChoices.isNotEmpty;
+    final hasChoices = choices.isNotEmpty;
     final canContinue = beat.nextId != null && !beat.isEnding && !hasChoices;
+    final bottomHeight = hasChoices
+        ? (size.height * 0.34).clamp(165.0, 320.0).toDouble()
+        : 92.0;
 
     return Scaffold(
       body: Stack(
@@ -139,52 +138,33 @@ class _GameScreenState extends State<GameScreen>
           SafeArea(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 860),
+                constraints: const BoxConstraints(maxWidth: 980),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
                   child: FadeTransition(
                     opacity: _fadeAnim,
-                    child: hasChoices
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                child: _StoryPane(
-                                  beat: beat,
-                                  imageHeight: imageHeight,
-                                  storyFontSize: storyFontSize,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              _BottomChoicesBar(
-                                choices: visibleChoices,
-                                maxHeight: choicesPanelMaxHeight,
-                                onChoice: (choice) => _goTo(choice.nextId, choice: choice),
-                              ),
-                            ],
-                          )
-                        : Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(right: 12),
-                                  child: _StoryPane(
-                                    beat: beat,
-                                    imageHeight: imageHeight,
-                                    storyFontSize: storyFontSize,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                width: 112,
-                                child: _ContinueRailButton(
-                                  enabled: canContinue,
-                                  onTap: canContinue ? () => _goTo(beat.nextId!) : null,
-                                ),
-                              ),
-                            ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: _TopSplitStory(
+                            beat: beat,
                           ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: bottomHeight,
+                          child: _BottomActionArea(
+                            choices: choices,
+                            onChoice: (choice) =>
+                                _goTo(choice.nextId, choice: choice),
+                            canContinue: canContinue,
+                            onContinue:
+                                canContinue ? () => _goTo(beat.nextId!) : null,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -196,36 +176,82 @@ class _GameScreenState extends State<GameScreen>
   }
 }
 
-class _StoryPane extends StatelessWidget {
+class _TopSplitStory extends StatelessWidget {
   final StoryBeat beat;
-  final double imageHeight;
-  final double storyFontSize;
 
-  const _StoryPane({
+  const _TopSplitStory({
     required this.beat,
-    required this.imageHeight,
-    required this.storyFontSize,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (beat.imagePath != null)
-          SizedBox(
-            height: imageHeight,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (beat.imagePath == null) {
+          return _StoryTextPane(
+            beat: beat,
+            fullTextMode: true,
+          );
+        }
+
+        final isWide = constraints.maxWidth >= 760;
+        final imagePane = Expanded(
+          flex: 5,
+          child: Padding(
+            padding: EdgeInsets.only(right: isWide ? 16 : 8),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.asset(
                 beat.imagePath!,
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Container(color: Colors.black12),
+                alignment: Alignment.topCenter,
+                errorBuilder: (_, __, ___) =>
+                    Container(color: Colors.black12),
               ),
             ),
           ),
-        if (beat.sceneLabel.isNotEmpty) ...[
-          const SizedBox(height: 8),
+        );
+
+        final textPane = Expanded(
+          flex: 5,
+          child: _StoryTextPane(
+            beat: beat,
+            fullTextMode: false,
+          ),
+        );
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            imagePane,
+            textPane,
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _StoryTextPane extends StatelessWidget {
+  final StoryBeat beat;
+  final bool fullTextMode;
+
+  const _StoryTextPane({
+    required this.beat,
+    required this.fullTextMode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final fontSize = fullTextMode
+        ? (size.width < 700 ? 20.0 : 22.0)
+        : (size.width < 700 ? 18.5 : 21.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (beat.sceneLabel.isNotEmpty)
           Text(
             beat.sceneLabel,
             style: GoogleFonts.robotoMono(
@@ -234,7 +260,6 @@ class _StoryPane extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-        ],
         const SizedBox(height: 8),
         Expanded(
           child: SingleChildScrollView(
@@ -244,9 +269,9 @@ class _StoryPane extends StatelessWidget {
                 Text(
                   beat.text,
                   style: GoogleFonts.ebGaramond(
-                    fontSize: storyFontSize,
+                    fontSize: fontSize,
                     color: Colors.black,
-                    height: 1.68,
+                    height: fullTextMode ? 1.72 : 1.68,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -255,7 +280,7 @@ class _StoryPane extends StatelessWidget {
                   Text(
                     beat.redWarningText!,
                     style: GoogleFonts.ebGaramond(
-                      fontSize: storyFontSize - 1.5,
+                      fontSize: fontSize - 1.5,
                       color: const Color(0xFF8B1A1A),
                       fontWeight: FontWeight.w700,
                       height: 1.6,
@@ -272,24 +297,29 @@ class _StoryPane extends StatelessWidget {
   }
 }
 
-class _BottomChoicesBar extends StatelessWidget {
+class _BottomActionArea extends StatelessWidget {
   final List<StoryChoice> choices;
-  final double maxHeight;
   final void Function(StoryChoice) onChoice;
+  final bool canContinue;
+  final VoidCallback? onContinue;
 
-  const _BottomChoicesBar({
+  const _BottomActionArea({
     required this.choices,
-    required this.maxHeight,
     required this.onChoice,
+    required this.canContinue,
+    required this.onContinue,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: maxHeight),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    final hasChoices = choices.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(height: 1, color: Colors.black87),
+        const SizedBox(height: 8),
+        if (hasChoices) ...[
           Text(
             'CHOOSE YOUR PATH',
             textAlign: TextAlign.center,
@@ -301,7 +331,7 @@ class _BottomChoicesBar extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Flexible(
+          Expanded(
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -319,8 +349,23 @@ class _BottomChoicesBar extends StatelessWidget {
               ),
             ),
           ),
+        ] else ...[
+          const Spacer(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              SizedBox(
+                width: 130,
+                child: _ContinueButton(
+                  enabled: canContinue,
+                  onTap: onContinue,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
         ],
-      ),
+      ],
     );
   }
 }
@@ -390,75 +435,54 @@ class _ChoiceTileState extends State<_ChoiceTile> {
   }
 }
 
-class _ContinueRailButton extends StatefulWidget {
+class _ContinueButton extends StatefulWidget {
   final bool enabled;
   final VoidCallback? onTap;
 
-  const _ContinueRailButton({
+  const _ContinueButton({
     required this.enabled,
     required this.onTap,
   });
 
   @override
-  State<_ContinueRailButton> createState() => _ContinueRailButtonState();
+  State<_ContinueButton> createState() => _ContinueButtonState();
 }
 
-class _ContinueRailButtonState extends State<_ContinueRailButton> {
+class _ContinueButtonState extends State<_ContinueButton> {
   bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
     final disabled = !widget.enabled || widget.onTap == null;
-    return Column(
-      children: [
-        const Spacer(),
-        GestureDetector(
-          onTap: disabled ? null : widget.onTap,
-          onTapDown: disabled ? null : (_) => setState(() => _pressed = true),
-          onTapUp: disabled ? null : (_) => setState(() => _pressed = false),
-          onTapCancel: () => setState(() => _pressed = false),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: disabled ? Colors.black45 : Colors.black87,
-                width: 1,
-              ),
-              color: disabled
-                  ? Colors.black.withOpacity(0.05)
-                  : (_pressed
-                      ? Colors.black.withOpacity(0.10)
-                      : Colors.transparent),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  'NEXT',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.robotoMono(
-                    fontSize: 13.8,
-                    color: disabled ? Colors.black54 : Colors.black,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Continue',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.robotoMono(
-                    fontSize: 11.2,
-                    color: disabled ? Colors.black54 : Colors.black87,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
+    return GestureDetector(
+      onTap: disabled ? null : widget.onTap,
+      onTapDown: disabled ? null : (_) => setState(() => _pressed = true),
+      onTapUp: disabled ? null : (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: disabled ? Colors.black45 : Colors.black87,
+            width: 1,
+          ),
+          color: disabled
+              ? Colors.black.withOpacity(0.05)
+              : (_pressed
+                  ? Colors.black.withOpacity(0.10)
+                  : Colors.transparent),
+        ),
+        child: Text(
+          'Continue',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.robotoMono(
+            fontSize: 13.2,
+            color: disabled ? Colors.black54 : Colors.black,
+            fontWeight: FontWeight.w800,
           ),
         ),
-        const Spacer(),
-      ],
+      ),
     );
   }
 }

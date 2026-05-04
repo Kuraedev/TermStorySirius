@@ -35,4 +35,3 @@ flutter pub get
 flutter run
 ```
 
-*Note: Scene images are AI-generated and declared as such.*
