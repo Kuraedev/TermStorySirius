@@ -120,6 +120,8 @@ class _GameScreenState extends State<GameScreen>
     final size = MediaQuery.of(context).size;
     final imageHeight = (size.height * 0.29).clamp(140.0, 235.0).toDouble();
     final storyFontSize = size.width < 390 ? 19.0 : 20.5;
+    final choicesPanelMaxHeight =
+        (size.height * 0.34).clamp(165.0, 320.0).toDouble();
     final visibleChoices =
         beat.hasChoices ? widget.state.availableChoices(beat.choices!) : const <StoryChoice>[];
     final hasChoices = visibleChoices.isNotEmpty;
@@ -137,7 +139,7 @@ class _GameScreenState extends State<GameScreen>
           SafeArea(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 470),
+                constraints: const BoxConstraints(maxWidth: 860),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                   child: FadeTransition(
@@ -156,6 +158,7 @@ class _GameScreenState extends State<GameScreen>
                               const SizedBox(height: 10),
                               _BottomChoicesBar(
                                 choices: visibleChoices,
+                                maxHeight: choicesPanelMaxHeight,
                                 onChoice: (choice) => _goTo(choice.nextId, choice: choice),
                               ),
                             ],
@@ -271,22 +274,19 @@ class _StoryPane extends StatelessWidget {
 
 class _BottomChoicesBar extends StatelessWidget {
   final List<StoryChoice> choices;
+  final double maxHeight;
   final void Function(StoryChoice) onChoice;
 
   const _BottomChoicesBar({
     required this.choices,
+    required this.maxHeight,
     required this.onChoice,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 220),
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black87, width: 1),
-        color: Colors.white.withOpacity(0.24),
-      ),
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -300,8 +300,8 @@ class _BottomChoicesBar extends StatelessWidget {
               letterSpacing: 1.1,
             ),
           ),
-          const SizedBox(height: 8),
-          Expanded(
+          const SizedBox(height: 10),
+          Flexible(
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
